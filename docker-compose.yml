@@ -1,0 +1,43 @@
+services:
+  app:
+    build: .
+    container_name: one-time-text-bridge-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - app-data:/app/data
+    expose:
+      - "8000"
+    networks:
+      internal:
+        ipv4_address: 172.28.0.10
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: one-time-text-bridge-caddy
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      internal:
+        ipv4_address: 172.28.0.20
+
+networks:
+  internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+
+volumes:
+  app-data:
+  caddy-data:
+  caddy-config:

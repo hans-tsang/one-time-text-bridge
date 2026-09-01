@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Received text{% endblock %}
+{% block content %}
+<section class="card">
+  {% if not revealed %}
+  <h1>Someone sent you a one-time text</h1>
+  <p class="warning-banner" role="alert">
+    This link works only once. Pressing "Reveal text" will permanently consume it &mdash;
+    only do this when you are ready to read it.
+  </p>
+  <form method="post" action="/r/{{ raw_token }}/reveal">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <button type="submit" class="btn btn-primary">Reveal text</button>
+  </form>
+  {% else %}
+  <h1>Your text</h1>
+  <p class="hint">This link is now used up and cannot be opened again.</p>
+  <textarea id="received-text" class="received-text" readonly rows="8">{{ text }}</textarea>
+
+  <div class="button-row">
+    <button type="button" class="btn btn-secondary" id="copy-text-btn" data-copy-target="received-text">
+      Copy text
+    </button>
+    <button type="button" class="btn btn-secondary" id="share-text-btn" hidden>Share</button>
+  </div>
+  <p class="copy-feedback" id="copy-feedback" aria-live="polite"></p>
+
+  <form method="post" action="/r/{{ raw_token }}/delete">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <button type="submit" class="btn btn-danger">Done and delete now</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/app.js"></script>
+{% endblock %}
