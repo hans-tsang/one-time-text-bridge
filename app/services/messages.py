@@ -23,13 +23,10 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models import Message
 from app.security import generate_token, hash_token
+from app.utils import utcnow
 
 ALLOWED_EXPIRY_MINUTES = (5, 10, 30)
 DEFAULT_EXPIRY_MINUTES = 10
-
-
-def _utcnow() -> datetime.datetime:
-    return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
 
 class MessageError(ValueError):
@@ -62,7 +59,7 @@ def create_message(db: Session, text: str, expiry_minutes: int) -> tuple[Message
 
     raw_token = generate_token()
     token_hash = hash_token(raw_token)
-    now = _utcnow()
+    now = utcnow()
     message = Message(
         token_hash=token_hash,
         text=text,
@@ -87,7 +84,7 @@ def get_valid_message(db: Session, raw_token: str) -> Message | None:
         return None
     if message.consumed:
         return None
-    if message.expires_at <= _utcnow():
+    if message.expires_at <= utcnow():
         return None
     return message
 
@@ -97,7 +94,7 @@ def reveal_and_consume(db: Session, raw_token: str) -> Message | None:
     successfully consumed just now (i.e. this caller "won" the race).
     """
     token_hash = hash_token(raw_token)
-    now = _utcnow()
+    now = utcnow()
 
     result = db.execute(
         update(Message)
@@ -117,11 +114,16 @@ def reveal_and_consume(db: Session, raw_token: str) -> Message | None:
     return message
 
 
-def delete_message(db: Session, raw_token: str) -> None:
-    """Permanently delete a message row (used by "Done and delete now")."""
+def delete_message(db: Session, raw_token: str) -> bool:
+    """Permanently delete a message row (used by "Done and delete now").
+
+    Returns True if a row was deleted, False if the token did not
+    correspond to any existing row.
+    """
     token_hash = hash_token(raw_token)
-    db.execute(delete(Message).where(Message.token_hash == token_hash))
+    result = db.execute(delete(Message).where(Message.token_hash == token_hash))
     db.commit()
+    return result.rowcount == 1
 
 
 def cleanup_expired_and_consumed(db: Session) -> int:
@@ -129,7 +131,7 @@ def cleanup_expired_and_consumed(db: Session) -> int:
 
     Returns the number of rows deleted.
     """
-    now = _utcnow()
+    now = utcnow()
     result = db.execute(
         delete(Message).where((Message.expires_at <= now) | (Message.consumed.is_(True)))
     )

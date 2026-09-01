@@ -12,10 +12,7 @@ from sqlalchemy import Boolean, DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
-
-
-def _utcnow() -> datetime.datetime:
-    return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+from app.utils import utcnow
 
 
 class Message(Base):
@@ -24,7 +21,7 @@ class Message(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(), default=_utcnow, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(), default=utcnow, nullable=False)
     expires_at: Mapped[datetime.datetime] = mapped_column(DateTime(), nullable=False)
     viewed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(), nullable=True)
     consumed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

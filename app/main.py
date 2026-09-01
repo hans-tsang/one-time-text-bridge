@@ -310,8 +310,11 @@ async def receive_delete(request: Request, raw_token: str, csrf_token: str = For
 
     db = next(_get_db())
     try:
-        delete_message(db, raw_token)
+        deleted = delete_message(db, raw_token)
     finally:
         db.close()
+
+    if not deleted:
+        return templates.TemplateResponse(request, "unavailable.html", {}, status_code=404)
 
     return templates.TemplateResponse(request, "unavailable.html", {"deleted_by_user": True})

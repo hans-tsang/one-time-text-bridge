@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
+import threading
 import time
 from collections import defaultdict, deque
 
@@ -78,16 +79,18 @@ class InMemoryRateLimiter:
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self._hits: dict[str, deque[float]] = defaultdict(deque)
+        self._lock = threading.Lock()
 
     def is_allowed(self, key: str) -> bool:
         now = time.monotonic()
-        hits = self._hits[key]
-        while hits and now - hits[0] > self.window_seconds:
-            hits.popleft()
-        if len(hits) >= self.max_requests:
-            return False
-        hits.append(now)
-        return True
+        with self._lock:
+            hits = self._hits[key]
+            while hits and now - hits[0] > self.window_seconds:
+                hits.popleft()
+            if len(hits) >= self.max_requests:
+                return False
+            hits.append(now)
+            return True
 
 
 rate_limiter = InMemoryRateLimiter(max_requests=settings.rate_limit_per_minute, window_seconds=60.0)
