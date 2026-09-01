@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Link created{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Your one-time link is ready</h1>
+  <p class="warning-banner" role="alert">
+    Anyone who has this link or QR code can read the text <strong>once</strong>.
+    Share it only with the intended recipient, through a channel you trust.
+  </p>
+
+  <p>
+    This link expires in <strong>{{ expiry_minutes }} minutes</strong> and can be opened
+    <strong>one time only</strong>. After that, it will show "unavailable".
+  </p>
+
+  <div class="qr-wrap">
+    <img src="{{ qr_data_uri }}" alt="QR code for the one-time receive link" width="220" height="220" />
+  </div>
+
+  <label for="receive-url">Receive link</label>
+  <div class="copy-row">
+    <input id="receive-url" type="text" readonly value="{{ receive_url }}" />
+    <button type="button" class="btn btn-secondary" id="copy-link-btn" data-copy-target="receive-url">
+      Copy receive link
+    </button>
+  </div>
+  <p class="copy-feedback" id="copy-feedback" aria-live="polite"></p>
+
+  <p class="hint">The raw link is the only key to this text &mdash; treat it like a password.</p>
+
+  <div class="button-row">
+    <a class="btn btn-primary" href="/create">Create another</a>
+    <a class="btn btn-secondary" href="/">Home</a>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/app.js"></script>
+{% endblock %}

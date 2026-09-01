@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Link unavailable{% endblock %}
+{% block content %}
+<section class="card">
+  {% if deleted_by_user %}
+  <h1>Deleted</h1>
+  <p>The text has been deleted from this device's view. It cannot be opened again.</p>
+  {% else %}
+  <h1>This link is unavailable, expired, or already used</h1>
+  <p>
+    For your privacy, we don't say which. If you were expecting a message, ask the
+    sender to create a new one-time link.
+  </p>
+  {% endif %}
+  <div class="button-row">
+    <a class="btn btn-primary" href="/">Home</a>
+  </div>
+</section>
+{% endblock %}

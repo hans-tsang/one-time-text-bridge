@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}One-Time Text Bridge{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Send short text, once.</h1>
+  <p>
+    A privacy-first way to move a short piece of non-sensitive text between two phones.
+    Each link works exactly once and disappears automatically.
+  </p>
+  <div class="warning-banner" role="alert">
+    Do not use this service for work-confidential data, passwords, MFA codes, financial data,
+    personal data, or anything restricted by your organisation.
+  </div>
+  <div class="button-row">
+    <a class="btn btn-primary" href="/create">Create one-time text</a>
+    <a class="btn btn-secondary" href="/create#receive-hint">Open received text</a>
+  </div>
+  <p class="hint" id="receive-hint">
+    To open a received text, use the one-time link or QR code someone sent you &mdash;
+    there is nothing to look up here.
+  </p>
+</section>
+{% endblock %}

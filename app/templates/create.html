@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Create one-time text{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Create one-time text</h1>
+  <div class="warning-banner" role="alert">
+    Do not use this service for work-confidential data, passwords, MFA codes, financial data,
+    personal data, or anything restricted by your organisation.
+  </div>
+
+  {% if error %}
+  <p class="error-banner" role="alert">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/create" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+    <label for="text">Your text (max {{ max_length }} characters)</label>
+    <textarea
+      id="text"
+      name="text"
+      maxlength="{{ max_length }}"
+      rows="8"
+      required
+      aria-describedby="char-counter"
+    ></textarea>
+    <div id="char-counter" class="char-counter" data-max="{{ max_length }}">0 / {{ max_length }}</div>
+
+    <fieldset class="expiry-fieldset">
+      <legend>Expires after</legend>
+      {% for minutes in expiry_options %}
+      <label class="radio-label">
+        <input
+          type="radio"
+          name="expiry_minutes"
+          value="{{ minutes }}"
+          {% if minutes == default_expiry %}checked{% endif %}
+        />
+        {{ minutes }} minutes
+      </label>
+      {% endfor %}
+    </fieldset>
+
+    <label class="checkbox-label">
+      <input type="checkbox" name="consent" required />
+      I confirm this contains no confidential, work, personal, financial, credential, or
+      authentication information.
+    </label>
+
+    <button type="submit" class="btn btn-primary">Create secure link</button>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/app.js"></script>
+{% endblock %}
