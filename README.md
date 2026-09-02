@@ -90,6 +90,8 @@ Dockerfile
 docker-compose.yml
 Caddyfile
 .env.example
+web.config                 # IIS reverse-proxy configuration
+.github/workflows/release.yml # CI and Windows release package
 ```
 
 ## Local setup (Python virtual environment)
@@ -134,6 +136,49 @@ can instead run just the `app` service and hit it directly on port 8000:
 ```bash
 docker compose run --rm --service-ports app
 ```
+
+## Windows IIS deployment (no Docker)
+
+Each pushed `v*` tag runs the GitHub Actions **Build Windows release** workflow.
+It tests the application and attaches `one-time-text-bridge-windows.zip` to the
+corresponding [GitHub Release](../../releases). Download and extract that ZIP on
+the Windows server, for example to `C:\inetpub\one-time-text-bridge`.
+
+1. Install Python 3.12, IIS, the IIS **URL Rewrite** module, and **Application
+   Request Routing (ARR)**. In ARR's Server Proxy Settings, enable proxying.
+2. In the extracted directory, create and activate a virtual environment, then
+   install the pinned dependencies:
+   ```powershell
+   py -3.12 -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
+   ```
+3. Copy `.env.example` to `.env` and set the production values:
+   ```ini
+   ENVIRONMENT=production
+   SECRET_KEY=<generate with: py -c "import secrets; print(secrets.token_urlsafe(48))">
+   ALLOWED_HOSTS=example.com
+   BASE_URL=https://example.com
+   TRUSTED_PROXY_IPS=127.0.0.1
+   ```
+   Keep `.env` and the `data` directory out of source control and back up
+   `data\app.db` as appropriate.
+4. Start the application on the local loopback interface, using a Windows
+   service manager such as NSSM or an equivalent service wrapper:
+   ```powershell
+   .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+   ```
+   Set the service working directory to the extracted release directory so the
+   SQLite database is stored under `data`.
+5. In IIS Manager, create a site whose physical path is the extracted release
+   directory. Bind the site to `https` with its certificate and hostname.
+   The included `web.config` proxies requests to the loopback Uvicorn process
+   and sends the forwarded HTTPS headers the application requires.
+
+Do not expose port 8000 through Windows Firewall; only IIS should be publicly
+reachable. The app must stay as a single process when using its built-in
+in-memory rate limiter and SQLite database.
 
 ## Production deployment (Docker Compose behind Caddy)
 
