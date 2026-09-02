@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Integer, LargeBinary, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -21,6 +21,9 @@ class Message(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
+    file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    file_content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    file_data: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(), default=utcnow, nullable=False)
     expires_at: Mapped[datetime.datetime] = mapped_column(DateTime(), nullable=False)
     viewed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(), nullable=True)

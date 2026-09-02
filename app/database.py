@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 from collections.abc import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import settings
@@ -35,10 +35,23 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def init_db() -> None:
-    """Create tables if they do not already exist."""
+    """Create tables and apply the small additive SQLite schema migration."""
     from app import models  # noqa: F401  (ensure models are registered)
 
     Base.metadata.create_all(bind=engine)
+    if not settings.database_url.startswith("sqlite"):
+        return
+
+    with engine.begin() as connection:
+        columns = {row[1] for row in connection.execute(text("PRAGMA table_info(messages)"))}
+        additions = {
+            "file_name": "VARCHAR(255)",
+            "file_content_type": "VARCHAR(255)",
+            "file_data": "BLOB",
+        }
+        for name, definition in additions.items():
+            if name not in columns:
+                connection.execute(text(f"ALTER TABLE messages ADD COLUMN {name} {definition}"))
 
 
 def get_db() -> Generator[Session, None, None]:

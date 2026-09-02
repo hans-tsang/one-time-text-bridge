@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Create one-time text{% endblock %}
+{% block title %}Create one-time share{% endblock %}
 {% block content %}
 <section class="card">
-  <h1>Create one-time text</h1>
+  <h1>Create one-time share</h1>
   <div class="warning-banner" role="alert">
     Do not use this service for work-confidential data, passwords, MFA codes, financial data,
     personal data, or anything restricted by your organisation.
@@ -12,7 +12,7 @@
   <p class="error-banner" role="alert">{{ error }}</p>
   {% endif %}
 
-  <form method="post" action="/create" novalidate>
+  <form method="post" action="/create" enctype="multipart/form-data" novalidate>
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
 
     <label for="text">Your text (max {{ max_length }} characters)</label>
@@ -21,10 +21,13 @@
       name="text"
       maxlength="{{ max_length }}"
       rows="8"
-      required
       aria-describedby="char-counter"
     ></textarea>
     <div id="char-counter" class="char-counter" data-max="{{ max_length }}">0 / {{ max_length }}</div>
+
+    <label for="upload">Or choose one file or photo (max {{ max_upload_bytes // (1024 * 1024) }} MiB)</label>
+    <input id="upload" name="upload" type="file" />
+    <p class="hint">Choose either text or a file, not both.</p>
 
     <fieldset class="expiry-fieldset">
       <legend>Expires after</legend>

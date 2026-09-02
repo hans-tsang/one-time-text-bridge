@@ -126,3 +126,30 @@ def test_delete_message_makes_link_unavailable():
 
     second_get = client.get(receive_path)
     assert second_get.status_code == 404
+
+
+def test_file_share_downloads_once():
+    get_response = client.get("/create")
+    csrf = _get_csrf(get_response)
+    create_response = client.post(
+        "/create",
+        data={"text": "", "expiry_minutes": "10", "consent": "on", "csrf_token": csrf},
+        files={"upload": ("photo.png", b"png data", "image/png")},
+    )
+    assert create_response.status_code == 200
+    receive_path = re.search(r'value="(http://testserver/r/[^"]+)"', create_response.text).group(1)
+    receive_path = receive_path.replace("http://testserver", "")
+
+    receive_get = client.get(receive_path)
+    assert receive_get.status_code == 200
+    assert "Download photo.png" in receive_get.text
+
+    reveal_csrf = _get_csrf(receive_get)
+    download_response = client.post(f"{receive_path}/reveal", data={"csrf_token": reveal_csrf})
+    assert download_response.status_code == 200
+    assert download_response.content == b"png data"
+    assert download_response.headers["content-type"] == "image/png"
+    assert download_response.headers["content-disposition"] == 'attachment; filename="photo.png"'
+
+    second_get = client.get(receive_path)
+    assert second_get.status_code == 404

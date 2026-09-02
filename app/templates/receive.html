@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Received text{% endblock %}
+{% block title %}Received share{% endblock %}
 {% block content %}
 <section class="card">
   {% if not revealed %}
-  <h1>Someone sent you a one-time text</h1>
+  <h1>Someone sent you a one-time {% if file_name %}file{% else %}text{% endif %}</h1>
   <p class="warning-banner" role="alert">
-    This link works only once. Pressing "Reveal text" will permanently consume it &mdash;
-    only do this when you are ready to read it.
+    This link works only once. Pressing the button will permanently consume it &mdash;
+    only do this when you are ready.
   </p>
   <form method="post" action="/r/{{ raw_token }}/reveal">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-    <button type="submit" class="btn btn-primary">Reveal text</button>
+    <button type="submit" class="btn btn-primary">{% if file_name %}Download {{ file_name }}{% else %}Reveal text{% endif %}</button>
   </form>
   {% else %}
   <h1>Your text</h1>

@@ -1,7 +1,7 @@
 # One-Time Text Bridge
 
-A small, privacy-first web app for moving a short piece of **non-sensitive**
-text between two phones. Create a link, share it once, and it self-destructs.
+A small, privacy-first web app for moving **non-sensitive** text, a photo, or
+one file between two phones. Create a link, share it once, and it self-destructs.
 
 > **This is not a chat app, a file-sharing service, or a way to bypass an
 > employer's security policy.** It is meant for short personal text only.
@@ -13,14 +13,16 @@ text between two phones. Create a link, share it once, and it self-destructs.
 ## How it works
 
 1. `/` — landing page with "Create one-time text" and "Open received text".
-2. `/create` — write up to 2,000 characters, pick an expiry (5/10/30 minutes,
-   default 10), confirm the content is not sensitive, and submit.
+2. `/create` — write up to 2,000 characters or select one file/photo up to
+  10 MiB, pick an expiry (5/10/30 minutes, default 10), confirm the content
+  is not sensitive, and submit.
 3. The server generates a cryptographically secure random 256-bit token
    (`secrets.token_urlsafe`). Only the **SHA-256 hash** of the token is
    stored in SQLite — the raw token is never written to disk or logs.
 4. You get a one-time link `/r/<raw-token>` and a QR code for it.
-5. `/r/<raw-token>` shows a "Reveal text" button. Pressing it atomically
-   marks the message as consumed and displays the text exactly once.
+5. `/r/<raw-token>` shows a reveal or download button. Pressing it atomically
+  marks the share as consumed, then displays the text or downloads the file
+  exactly once.
    After that, or after expiry, the link shows a generic "unavailable" page.
 6. Expired and consumed messages are deleted automatically (on startup, on a
    recurring interval, and via a CLI command).

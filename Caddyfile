@@ -1,6 +1,6 @@
-# Replace with your real domain before deploying.
-# Caddy automatically obtains and renews HTTPS certificates via Let's Encrypt.
-example.com {
+# Local development proxy. Replace with your real domain for production;
+# Caddy will then automatically obtain and renew a Let's Encrypt certificate.
+http://localhost {
     encode gzip
 
     reverse_proxy app:8000 {

@@ -16,6 +16,7 @@ non-human first requests.
 from __future__ import annotations
 
 import datetime
+from pathlib import Path
 
 from sqlalchemy import delete, update
 from sqlalchemy.orm import Session
@@ -43,19 +44,47 @@ def validate_text(text: str) -> str:
     return text
 
 
+def validate_file(filename: str | None, content_type: str | None, data: bytes | None) -> tuple[str, str, bytes]:
+    if not filename or data is None:
+        raise MessageError("A file is required.")
+    if len(data) == 0:
+        raise MessageError("The uploaded file is empty.")
+    if len(data) > settings.max_upload_bytes:
+        raise MessageError(f"Files must be at most {settings.max_upload_bytes // (1024 * 1024)} MiB.")
+
+    safe_name = Path(filename).name.replace("\x00", "").strip()
+    if not safe_name:
+        raise MessageError("The uploaded file needs a valid name.")
+    return safe_name[:255], (content_type or "application/octet-stream")[:255], data
+
+
 def validate_expiry_minutes(minutes: int) -> int:
     if minutes not in ALLOWED_EXPIRY_MINUTES:
         raise MessageError("Invalid expiry selection.")
     return minutes
 
 
-def create_message(db: Session, text: str, expiry_minutes: int) -> tuple[Message, str]:
+def create_message(
+    db: Session,
+    text: str,
+    expiry_minutes: int,
+    filename: str | None = None,
+    content_type: str | None = None,
+    file_data: bytes | None = None,
+) -> tuple[Message, str]:
     """Create a message, returning (record, raw_token).
 
     The raw token is never persisted; only its SHA-256 hash is stored.
     """
-    text = validate_text(text)
     expiry_minutes = validate_expiry_minutes(expiry_minutes)
+    has_file = filename is not None or file_data is not None
+    if has_file:
+        if text.strip():
+            raise MessageError("Share either text or one file, not both.")
+        filename, content_type, file_data = validate_file(filename, content_type, file_data)
+        text = ""
+    else:
+        text = validate_text(text)
 
     raw_token = generate_token()
     token_hash = hash_token(raw_token)
@@ -63,6 +92,9 @@ def create_message(db: Session, text: str, expiry_minutes: int) -> tuple[Message
     message = Message(
         token_hash=token_hash,
         text=text,
+        file_name=filename,
+        file_content_type=content_type,
+        file_data=file_data,
         created_at=now,
         expires_at=now + datetime.timedelta(minutes=expiry_minutes),
         viewed_at=None,

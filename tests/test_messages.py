@@ -50,6 +50,46 @@ def test_create_message_rejects_invalid_expiry(db):
         create_message(db, text="hi", expiry_minutes=999)
 
 
+def test_create_message_stores_file(db):
+    data = b"photo bytes"
+    message, raw_token = create_message(
+        db,
+        text="",
+        expiry_minutes=10,
+        filename="photo.png",
+        content_type="image/png",
+        file_data=data,
+    )
+    assert message.file_name == "photo.png"
+    assert message.file_content_type == "image/png"
+    assert message.file_data == data
+    assert get_valid_message(db, raw_token) is not None
+
+
+def test_create_message_rejects_text_and_file(db):
+    with pytest.raises(MessageError, match="either text or one file"):
+        create_message(
+            db,
+            text="hello",
+            expiry_minutes=10,
+            filename="note.txt",
+            content_type="text/plain",
+            file_data=b"file",
+        )
+
+
+def test_create_message_rejects_oversized_file(db):
+    with pytest.raises(MessageError, match="Files must be at most"):
+        create_message(
+            db,
+            text="",
+            expiry_minutes=10,
+            filename="large.bin",
+            content_type="application/octet-stream",
+            file_data=b"x" * (10 * 1024 * 1024 + 1),
+        )
+
+
 def test_get_valid_message_returns_none_for_unknown_token(db):
     assert get_valid_message(db, "does-not-exist") is None
 

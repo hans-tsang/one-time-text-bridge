@@ -14,8 +14,8 @@ import logging
 from contextlib import asynccontextmanager
 
 import qrcode
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -144,6 +144,7 @@ async def create_form(request: Request) -> HTMLResponse:
         "create.html",
         {
             "max_length": settings.max_message_length,
+            "max_upload_bytes": settings.max_upload_bytes,
             "expiry_options": ALLOWED_EXPIRY_MINUTES,
             "default_expiry": DEFAULT_EXPIRY_MINUTES,
             "csrf_token": csrf_token,
@@ -157,7 +158,8 @@ async def create_form(request: Request) -> HTMLResponse:
 @app.post("/create", response_class=HTMLResponse)
 async def create_submit(
     request: Request,
-    text: str = Form(...),
+    text: str = Form(""),
+    upload: UploadFile | None = File(None),
     expiry_minutes: int = Form(DEFAULT_EXPIRY_MINUTES),
     consent: str | None = Form(None),
     csrf_token: str = Form(...),
@@ -177,6 +179,7 @@ async def create_submit(
             "create.html",
             {
                 "max_length": settings.max_message_length,
+                "max_upload_bytes": settings.max_upload_bytes,
                 "expiry_options": ALLOWED_EXPIRY_MINUTES,
                 "default_expiry": expiry_minutes,
                 "csrf_token": new_csrf,
@@ -187,9 +190,17 @@ async def create_submit(
         _set_csrf_cookie(response, new_csrf)
         return response
 
+    file_data = await upload.read() if upload else None
     db = next(_get_db())
     try:
-        message, raw_token = create_message(db, text=text, expiry_minutes=expiry_minutes)
+        message, raw_token = create_message(
+            db,
+            text=text,
+            expiry_minutes=expiry_minutes,
+            filename=upload.filename if upload else None,
+            content_type=upload.content_type if upload else None,
+            file_data=file_data,
+        )
     except MessageError as exc:
         new_csrf = issue_csrf_token()
         response = templates.TemplateResponse(
@@ -197,6 +208,7 @@ async def create_submit(
             "create.html",
             {
                 "max_length": settings.max_message_length,
+                "max_upload_bytes": settings.max_upload_bytes,
                 "expiry_options": ALLOWED_EXPIRY_MINUTES,
                 "default_expiry": expiry_minutes,
                 "csrf_token": new_csrf,
@@ -257,6 +269,7 @@ async def receive(request: Request, raw_token: str) -> HTMLResponse:
             "raw_token": raw_token,
             "revealed": False,
             "text": None,
+            "file_name": message.file_name,
             "csrf_token": csrf_token,
         },
     )
@@ -265,7 +278,7 @@ async def receive(request: Request, raw_token: str) -> HTMLResponse:
 
 
 @app.post("/r/{raw_token}/reveal", response_class=HTMLResponse)
-async def receive_reveal(request: Request, raw_token: str, csrf_token: str = Form(...)) -> HTMLResponse:
+async def receive_reveal(request: Request, raw_token: str, csrf_token: str = Form(...)) -> Response:
     limited = _rate_limit_or_429(request, "receive")
     if limited:
         return limited
@@ -283,6 +296,14 @@ async def receive_reveal(request: Request, raw_token: str, csrf_token: str = For
     if message is None:
         return templates.TemplateResponse(request, "unavailable.html", {}, status_code=404)
 
+    if message.file_data is not None and message.file_name is not None:
+        response = Response(
+            content=message.file_data,
+            media_type=message.file_content_type or "application/octet-stream",
+        )
+        response.headers["Content-Disposition"] = f'attachment; filename="{message.file_name}"'
+        return response
+
     new_csrf = issue_csrf_token()
     response = templates.TemplateResponse(
         request,
@@ -291,6 +312,7 @@ async def receive_reveal(request: Request, raw_token: str, csrf_token: str = For
             "raw_token": raw_token,
             "revealed": True,
             "text": message.text,
+            "file_name": None,
             "csrf_token": new_csrf,
         },
     )

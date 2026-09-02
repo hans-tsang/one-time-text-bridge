@@ -8,6 +8,11 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
 
 def _get_bool(name: str, default: bool) -> bool:
     value = os.environ.get(name)
@@ -50,6 +55,7 @@ class Settings:
         default_factory=lambda: _get_list("TRUSTED_PROXY_IPS", ["127.0.0.1"])
     )
     max_message_length: int = field(default_factory=lambda: _get_int("MAX_MESSAGE_LENGTH", 2000))
+    max_upload_bytes: int = field(default_factory=lambda: _get_int("MAX_UPLOAD_BYTES", 10 * 1024 * 1024))
     cleanup_interval_seconds: int = field(default_factory=lambda: _get_int("CLEANUP_INTERVAL_SECONDS", 60))
     rate_limit_per_minute: int = field(default_factory=lambda: _get_int("RATE_LIMIT_PER_MINUTE", 20))
     base_url: str = field(default_factory=lambda: os.environ.get("BASE_URL", "http://localhost:8000"))
