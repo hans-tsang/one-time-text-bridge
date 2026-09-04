@@ -18,6 +18,7 @@ from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from jinja2 import pass_context
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -48,6 +49,18 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("app.main")
 
 templates = Jinja2Templates(directory="app/templates")
+
+
+def _relative_url_for(context: dict, name: str, /, **path_params) -> str:
+    """Like the default `url_for`, but returns a root_path-relative path
+    (e.g. "/one-time/create") instead of an absolute URL, so links keep
+    working regardless of the scheme/host the app is reached through.
+    """
+    request: Request = context["request"]
+    return request.url_for(name, **path_params).path
+
+
+templates.env.globals["url_for"] = pass_context(_relative_url_for)
 
 _cleanup_task: asyncio.Task | None = None
 
@@ -159,7 +172,7 @@ async def create_form(request: Request) -> HTMLResponse:
 async def create_submit(
     request: Request,
     text: str = Form(""),
-    upload: UploadFile | None = File(None),
+    upload: UploadFile | str | None = File(None),
     expiry_minutes: int = Form(DEFAULT_EXPIRY_MINUTES),
     consent: str | None = Form(None),
     csrf_token: str = Form(...),
@@ -190,7 +203,7 @@ async def create_submit(
         _set_csrf_cookie(response, new_csrf)
         return response
 
-    if upload and not upload.filename:
+    if upload is None or isinstance(upload, str) or not upload.filename:
         upload = None
     file_data = await upload.read() if upload else None
     db = next(_get_db())
