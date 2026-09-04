@@ -8,7 +8,7 @@
     This link works only once. Pressing the button will permanently consume it &mdash;
     only do this when you are ready.
   </p>
-  <form method="post" action="/r/{{ raw_token }}/reveal">
+  <form method="post" action="{{ url_for('receive_reveal', raw_token=raw_token) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
     <button type="submit" class="btn btn-primary">{% if file_name %}Download {{ file_name }}{% else %}Reveal text{% endif %}</button>
   </form>
@@ -25,7 +25,7 @@
   </div>
   <p class="copy-feedback" id="copy-feedback" aria-live="polite"></p>
 
-  <form method="post" action="/r/{{ raw_token }}/delete">
+  <form method="post" action="{{ url_for('receive_delete', raw_token=raw_token) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
     <button type="submit" class="btn btn-danger">Done and delete now</button>
   </form>
@@ -33,5 +33,5 @@
 </section>
 {% endblock %}
 {% block scripts %}
-<script src="/static/js/app.js"></script>
+<script src="{{ url_for('static', path='/js/app.js') }}"></script>
 {% endblock %}

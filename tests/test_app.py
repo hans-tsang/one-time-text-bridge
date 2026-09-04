@@ -102,6 +102,30 @@ def test_full_create_and_receive_flow():
     assert "unavailable" in second_get.text.lower()
 
 
+def test_text_share_ignores_empty_file_field():
+    get_response = client.get("/create")
+    csrf = _get_csrf(get_response)
+    response = client.post(
+        "/create",
+        data={"text": "text only", "expiry_minutes": "10", "consent": "on", "csrf_token": csrf},
+        files={"upload": ("", b"", "application/octet-stream")},
+    )
+    assert response.status_code == 200
+    assert "receive-url" in response.text
+
+
+def test_urls_include_configured_root_path():
+    original_root_path = app.root_path
+    app.root_path = "/one-time"
+    try:
+        response = client.get("/create")
+        assert 'action="/one-time/create"' in response.text
+        assert 'href="/one-time/"' in response.text
+        assert 'href="/one-time/static/css/app.css"' in response.text
+    finally:
+        app.root_path = original_root_path
+
+
 def test_receive_unknown_token_is_generic_unavailable():
     response = client.get("/r/this-token-does-not-exist")
     assert response.status_code == 404

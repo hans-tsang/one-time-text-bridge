@@ -29,11 +29,11 @@
   <p class="hint">The raw link is the only key to this share &mdash; treat it like a password.</p>
 
   <div class="button-row">
-    <a class="btn btn-primary" href="/create">Create another</a>
-    <a class="btn btn-secondary" href="/">Home</a>
+    <a class="btn btn-primary" href="{{ url_for('create_form') }}">Create another</a>
+    <a class="btn btn-secondary" href="{{ url_for('index') }}">Home</a>
   </div>
 </section>
 {% endblock %}
 {% block scripts %}
-<script src="/static/js/app.js"></script>
+<script src="{{ url_for('static', path='/js/app.js') }}"></script>
 {% endblock %}

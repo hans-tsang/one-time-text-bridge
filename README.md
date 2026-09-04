@@ -162,6 +162,10 @@ the Windows server, for example to `C:\inetpub\one-time-text-bridge`.
    BASE_URL=https://example.com
    TRUSTED_PROXY_IPS=127.0.0.1
    ```
+  When IIS hosts the application below a virtual path such as
+  `https://example.com/one-time`, also set `ROOT_PATH=/one-time` and use
+  `BASE_URL=https://example.com`. This keeps forms, static assets, and
+  one-time links within the virtual application.
    Keep `.env` and the `data` directory out of source control and back up
    `data\app.db` as appropriate.
 4. Start the application on the local loopback interface, using a Windows

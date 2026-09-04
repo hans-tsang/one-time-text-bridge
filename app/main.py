@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
                 pass
 
 
-app = FastAPI(title="One-Time Text Bridge", lifespan=lifespan)
+app = FastAPI(title="One-Time Text Bridge", lifespan=lifespan, root_path=settings.root_path)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 if settings.allowed_hosts:
@@ -190,6 +190,8 @@ async def create_submit(
         _set_csrf_cookie(response, new_csrf)
         return response
 
+    if upload and not upload.filename:
+        upload = None
     file_data = await upload.read() if upload else None
     db = next(_get_db())
     try:
@@ -221,7 +223,7 @@ async def create_submit(
     finally:
         db.close()
 
-    receive_path = f"/r/{raw_token}"
+    receive_path = request.url_for("receive", raw_token=raw_token).path
     receive_url = f"{settings.base_url.rstrip('/')}{receive_path}"
 
     qr_img = qrcode.make(receive_url)

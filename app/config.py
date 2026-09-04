@@ -59,6 +59,7 @@ class Settings:
     cleanup_interval_seconds: int = field(default_factory=lambda: _get_int("CLEANUP_INTERVAL_SECONDS", 60))
     rate_limit_per_minute: int = field(default_factory=lambda: _get_int("RATE_LIMIT_PER_MINUTE", 20))
     base_url: str = field(default_factory=lambda: os.environ.get("BASE_URL", "http://localhost:8000"))
+    root_path: str = field(default_factory=lambda: os.environ.get("ROOT_PATH", "").rstrip("/"))
     # Optional extra layer: a shared passphrase required in addition to the
     # one-time link. Disabled by default; see README "Optional hardening".
     shared_passphrase: str | None = field(default_factory=lambda: os.environ.get("SHARED_PASSPHRASE") or None)
