@@ -87,8 +87,8 @@
     var status = document.getElementById("live-status");
     if (!textarea || !textarea.dataset.websocketUrl) return;
 
-    var websocketUrl = new URL(textarea.dataset.websocketUrl);
-    websocketUrl.protocol = websocketUrl.protocol === "https:" ? "wss:" : "ws:";
+    var websocketUrl = new URL(textarea.dataset.websocketUrl, window.location.origin);
+    websocketUrl.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     var socket = new WebSocket(websocketUrl);
     var timer;
 
@@ -97,6 +97,9 @@
     });
     socket.addEventListener("close", function () {
       status.textContent = "Connection lost. Reload to reconnect.";
+    });
+    socket.addEventListener("error", function () {
+      status.textContent = "Unable to connect. Check the server WebSocket configuration.";
     });
     socket.addEventListener("message", function (event) {
       var update = JSON.parse(event.data);

@@ -10,7 +10,7 @@
     class="received-text"
     rows="12"
     maxlength="{{ max_length }}"
-    data-websocket-url="{{ request.url_for('live_note_socket', raw_token=raw_token) }}"
+    data-websocket-url="{{ url_for('live_note_socket', raw_token=raw_token) }}"
   >{{ text }}</textarea>
 </section>
 {% endblock %}

@@ -131,6 +131,9 @@ def test_live_note_updates_connected_clients():
     receive_path = receive_path.replace("http://testserver", "")
     assert client.get(receive_path).status_code == 200
 
+    live_page = client.get(receive_path)
+    assert f'data-websocket-url="{receive_path}/ws"' in live_page.text
+
     with client.websocket_connect(f"{receive_path}/ws") as first, client.websocket_connect(
         f"{receive_path}/ws"
     ) as second:
