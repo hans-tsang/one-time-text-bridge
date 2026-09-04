@@ -71,6 +71,7 @@ def create_message(
     filename: str | None = None,
     content_type: str | None = None,
     file_data: bytes | None = None,
+    is_live_note: bool = False,
 ) -> tuple[Message, str]:
     """Create a message, returning (record, raw_token).
 
@@ -78,6 +79,8 @@ def create_message(
     """
     expiry_minutes = validate_expiry_minutes(expiry_minutes)
     has_file = filename is not None or file_data is not None
+    if is_live_note and has_file:
+        raise MessageError("Live shared notes cannot include a file.")
     if has_file:
         if text.strip():
             raise MessageError("Share either text or one file, not both.")
@@ -99,6 +102,7 @@ def create_message(
         expires_at=now + datetime.timedelta(minutes=expiry_minutes),
         viewed_at=None,
         consumed=False,
+        is_live_note=is_live_note,
     )
     db.add(message)
     db.commit()

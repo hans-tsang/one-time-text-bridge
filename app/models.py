@@ -28,3 +28,4 @@ class Message(Base):
     expires_at: Mapped[datetime.datetime] = mapped_column(DateTime(), nullable=False)
     viewed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(), nullable=True)
     consumed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_live_note: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

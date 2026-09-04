@@ -30,6 +30,18 @@
     <p class="hint">Choose either text or a file, not both.</p>
 
     <fieldset class="expiry-fieldset">
+      <legend>Share type</legend>
+      <label class="radio-label">
+        <input type="radio" name="share_mode" value="one_time" checked />
+        One-time share
+      </label>
+      <label class="radio-label">
+        <input type="radio" name="share_mode" value="live" />
+        Live shared note
+      </label>
+    </fieldset>
+
+    <fieldset class="expiry-fieldset">
       <legend>Expires after</legend>
       {% for minutes in expiry_options %}
       <label class="radio-label">

@@ -48,6 +48,7 @@ def init_db() -> None:
             "file_name": "VARCHAR(255)",
             "file_content_type": "VARCHAR(255)",
             "file_data": "BLOB",
+            "is_live_note": "BOOLEAN NOT NULL DEFAULT 0",
         }
         for name, definition in additions.items():
             if name not in columns:

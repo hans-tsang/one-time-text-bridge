@@ -16,6 +16,10 @@ one file between two phones. Create a link, share it once, and it self-destructs
 2. `/create` — write up to 2,000 characters or select one file/photo up to
   10 MiB, pick an expiry (5/10/30 minutes, default 10), confirm the content
   is not sensitive, and submit.
+  Select **Live shared note** to create an editable note instead. Everyone
+  who opens that link can edit the same text, with updates appearing
+  immediately until the note expires. Live shared notes cannot include files
+  and are not consumed after the first view.
 3. The server generates a cryptographically secure random 256-bit token
    (`secrets.token_urlsafe`). Only the **SHA-256 hash** of the token is
    stored in SQLite — the raw token is never written to disk or logs.
@@ -144,8 +148,10 @@ It tests the application and attaches `one-time-text-bridge-windows.zip` to the
 corresponding [GitHub Release](../../releases). Download and extract that ZIP on
 the Windows server, for example to `C:\inetpub\one-time-text-bridge`.
 
-1. Install Python 3.12, IIS, the IIS **URL Rewrite** module, and **Application
-   Request Routing (ARR)**. In ARR's Server Proxy Settings, enable proxying.
+1. Install Python 3.12, IIS, the IIS **URL Rewrite** module, **Application
+  Request Routing (ARR)**, and the IIS **WebSocket Protocol** feature. In
+  ARR's Server Proxy Settings, enable proxying. WebSocket Protocol is required
+  for Live shared notes to update immediately between connected devices.
 2. In the extracted directory, create and activate a virtual environment, then
    install the pinned dependencies:
    ```powershell
@@ -171,7 +177,7 @@ the Windows server, for example to `C:\inetpub\one-time-text-bridge`.
 4. Start the application on the local loopback interface, using a Windows
    service manager such as NSSM or an equivalent service wrapper:
    ```powershell
-   .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+  .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --proxy-headers --forwarded-allow-ips 127.0.0.1
    ```
    Set the service working directory to the extracted release directory so the
    SQLite database is stored under `data`.

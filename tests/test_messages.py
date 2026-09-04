@@ -66,6 +66,12 @@ def test_create_message_stores_file(db):
     assert get_valid_message(db, raw_token) is not None
 
 
+def test_create_live_note(db):
+    message, raw_token = create_message(db, text="shared", expiry_minutes=10, is_live_note=True)
+    assert message.is_live_note is True
+    assert get_valid_message(db, raw_token).text == "shared"
+
+
 def test_create_message_rejects_text_and_file(db):
     with pytest.raises(MessageError, match="either text or one file"):
         create_message(

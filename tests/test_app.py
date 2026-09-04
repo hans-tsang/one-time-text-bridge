@@ -114,6 +114,33 @@ def test_text_share_ignores_empty_file_field():
     assert "receive-url" in response.text
 
 
+def test_live_note_updates_connected_clients():
+    get_response = client.get("/create")
+    csrf = _get_csrf(get_response)
+    create_response = client.post(
+        "/create",
+        data={
+            "text": "initial",
+            "share_mode": "live",
+            "expiry_minutes": "10",
+            "consent": "on",
+            "csrf_token": csrf,
+        },
+    )
+    receive_path = re.search(r'value="(http://testserver/live/[^\"]+)"', create_response.text).group(1)
+    receive_path = receive_path.replace("http://testserver", "")
+    assert client.get(receive_path).status_code == 200
+
+    with client.websocket_connect(f"{receive_path}/ws") as first, client.websocket_connect(
+        f"{receive_path}/ws"
+    ) as second:
+        assert first.receive_json() == {"type": "sync", "text": "initial"}
+        assert second.receive_json() == {"type": "sync", "text": "initial"}
+        first.send_json({"text": "now shared"})
+        assert first.receive_json() == {"type": "update", "text": "now shared"}
+        assert second.receive_json() == {"type": "update", "text": "now shared"}
+
+
 def test_urls_include_configured_root_path():
     original_root_path = app.root_path
     app.root_path = "/one-time"

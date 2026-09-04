@@ -82,9 +82,42 @@
     }
   }
 
+  function setupLiveNote() {
+    var textarea = document.getElementById("live-note");
+    var status = document.getElementById("live-status");
+    if (!textarea || !textarea.dataset.websocketUrl) return;
+
+    var websocketUrl = new URL(textarea.dataset.websocketUrl);
+    websocketUrl.protocol = websocketUrl.protocol === "https:" ? "wss:" : "ws:";
+    var socket = new WebSocket(websocketUrl);
+    var timer;
+
+    socket.addEventListener("open", function () {
+      status.textContent = "Connected";
+    });
+    socket.addEventListener("close", function () {
+      status.textContent = "Connection lost. Reload to reconnect.";
+    });
+    socket.addEventListener("message", function (event) {
+      var update = JSON.parse(event.data);
+      if (typeof update.text === "string" && update.text !== textarea.value) {
+        textarea.value = update.text;
+      }
+    });
+    textarea.addEventListener("input", function () {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(function () {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ text: textarea.value }));
+        }
+      }, 100);
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     setupCharCounter();
     setupCopyButtons();
     setupShareButton();
+    setupLiveNote();
   });
 })();

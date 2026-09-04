@@ -14,7 +14,7 @@ import logging
 from contextlib import asynccontextmanager
 
 import qrcode
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import FastAPI, File, Form, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -50,6 +50,7 @@ logger = logging.getLogger("app.main")
 templates = Jinja2Templates(directory="app/templates")
 
 _cleanup_task: asyncio.Task | None = None
+_live_note_connections: dict[str, set[WebSocket]] = {}
 
 
 @asynccontextmanager
@@ -161,6 +162,7 @@ async def create_submit(
     text: str = Form(""),
     upload: UploadFile | None = File(None),
     expiry_minutes: int = Form(DEFAULT_EXPIRY_MINUTES),
+    share_mode: str = Form("one_time"),
     consent: str | None = Form(None),
     csrf_token: str = Form(...),
 ) -> HTMLResponse:
@@ -190,6 +192,9 @@ async def create_submit(
         _set_csrf_cookie(response, new_csrf)
         return response
 
+    if share_mode not in {"one_time", "live"}:
+        return HTMLResponse("Invalid share mode.", status_code=400)
+
     if upload and not upload.filename:
         upload = None
     file_data = await upload.read() if upload else None
@@ -202,6 +207,7 @@ async def create_submit(
             filename=upload.filename if upload else None,
             content_type=upload.content_type if upload else None,
             file_data=file_data,
+            is_live_note=share_mode == "live",
         )
     except MessageError as exc:
         new_csrf = issue_csrf_token()
@@ -223,7 +229,8 @@ async def create_submit(
     finally:
         db.close()
 
-    receive_path = request.url_for("receive", raw_token=raw_token).path
+    route_name = "live_note" if message.is_live_note else "receive"
+    receive_path = request.url_for(route_name, raw_token=raw_token).path
     receive_url = f"{settings.base_url.rstrip('/')}{receive_path}"
 
     qr_img = qrcode.make(receive_url)
@@ -246,6 +253,75 @@ async def create_submit(
     )
     _set_csrf_cookie(response, new_csrf)
     return response
+
+
+@app.get("/live/{raw_token}", response_class=HTMLResponse)
+async def live_note(request: Request, raw_token: str) -> HTMLResponse:
+    limited = _rate_limit_or_429(request, "live")
+    if limited:
+        return limited
+
+    db = next(_get_db())
+    try:
+        message = get_valid_message(db, raw_token)
+    finally:
+        db.close()
+
+    if message is None or not message.is_live_note:
+        return templates.TemplateResponse(request, "unavailable.html", {}, status_code=404)
+
+    return templates.TemplateResponse(
+        request,
+        "live.html",
+        {"raw_token": raw_token, "text": message.text, "max_length": settings.max_message_length},
+    )
+
+
+@app.websocket("/live/{raw_token}/ws")
+async def live_note_socket(websocket: WebSocket, raw_token: str) -> None:
+    db = SessionLocal()
+    try:
+        message = get_valid_message(db, raw_token)
+    finally:
+        db.close()
+
+    if message is None or not message.is_live_note:
+        await websocket.close(code=1008)
+        return
+
+    await websocket.accept()
+    connections = _live_note_connections.setdefault(raw_token, set())
+    connections.add(websocket)
+    try:
+        await websocket.send_json({"type": "sync", "text": message.text})
+        while True:
+            payload = await websocket.receive_json()
+            text = payload.get("text") if isinstance(payload, dict) else None
+            if not isinstance(text, str) or len(text) > settings.max_message_length:
+                continue
+
+            db = SessionLocal()
+            try:
+                current = get_valid_message(db, raw_token)
+                if current is None or not current.is_live_note:
+                    await websocket.close(code=1008)
+                    return
+                current.text = text
+                db.commit()
+            finally:
+                db.close()
+
+            for connection in list(connections):
+                try:
+                    await connection.send_json({"type": "update", "text": text})
+                except Exception:
+                    connections.discard(connection)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        connections.discard(websocket)
+        if not connections:
+            _live_note_connections.pop(raw_token, None)
 
 
 @app.get("/r/{raw_token}", response_class=HTMLResponse)
