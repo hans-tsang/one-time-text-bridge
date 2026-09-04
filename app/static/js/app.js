@@ -85,21 +85,56 @@
   function setupLiveNote() {
     var textarea = document.getElementById("live-note");
     var status = document.getElementById("live-status");
-    if (!textarea || !textarea.dataset.websocketUrl) return;
+    if (!textarea || !textarea.dataset.websocketUrl || !textarea.dataset.stateUrl) return;
 
     var websocketUrl = new URL(textarea.dataset.websocketUrl, window.location.origin);
     websocketUrl.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     var socket = new WebSocket(websocketUrl);
     var timer;
+    var polling = false;
+    var pollingTimer;
+
+    function updateFromServer() {
+      fetch(textarea.dataset.stateUrl, { cache: "no-store" })
+        .then(function (response) {
+          return response.ok ? response.json() : null;
+        })
+        .then(function (update) {
+          if (update && typeof update.text === "string" && update.text !== textarea.value) {
+            textarea.value = update.text;
+          }
+        })
+        .catch(function () {
+          status.textContent = "Connection lost. Reload to reconnect.";
+        });
+    }
+
+    function startPolling() {
+      if (polling) return;
+      polling = true;
+      status.textContent = "Connected";
+      updateFromServer();
+      pollingTimer = window.setInterval(updateFromServer, 400);
+    }
+
+    function saveWithHttp() {
+      fetch(textarea.dataset.stateUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: textarea.value }),
+      }).catch(function () {
+        status.textContent = "Connection lost. Reload to reconnect.";
+      });
+    }
 
     socket.addEventListener("open", function () {
       status.textContent = "Connected";
     });
     socket.addEventListener("close", function () {
-      status.textContent = "Connection lost. Reload to reconnect.";
+      startPolling();
     });
     socket.addEventListener("error", function () {
-      status.textContent = "Unable to connect. Check the server WebSocket configuration.";
+      startPolling();
     });
     socket.addEventListener("message", function (event) {
       var update = JSON.parse(event.data);
@@ -112,6 +147,8 @@
       timer = window.setTimeout(function () {
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({ text: textarea.value }));
+        } else if (polling) {
+          saveWithHttp();
         }
       }, 100);
     });

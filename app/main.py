@@ -290,6 +290,41 @@ async def live_note(request: Request, raw_token: str) -> HTMLResponse:
     )
 
 
+@app.get("/live/{raw_token}/state")
+async def live_note_state(raw_token: str) -> JSONResponse:
+    db = SessionLocal()
+    try:
+        message = get_valid_message(db, raw_token)
+        if message is None or not message.is_live_note:
+            return JSONResponse({"detail": "Not found."}, status_code=404)
+        return JSONResponse({"text": message.text})
+    finally:
+        db.close()
+
+
+@app.post("/live/{raw_token}/state")
+async def live_note_update(request: Request, raw_token: str) -> JSONResponse:
+    try:
+        payload = await request.json()
+    except ValueError:
+        return JSONResponse({"detail": "Invalid note update."}, status_code=400)
+
+    text = payload.get("text") if isinstance(payload, dict) else None
+    if not isinstance(text, str) or len(text) > settings.max_message_length:
+        return JSONResponse({"detail": "Invalid note update."}, status_code=400)
+
+    db = SessionLocal()
+    try:
+        message = get_valid_message(db, raw_token)
+        if message is None or not message.is_live_note:
+            return JSONResponse({"detail": "Not found."}, status_code=404)
+        message.text = text
+        db.commit()
+        return JSONResponse({"text": text})
+    finally:
+        db.close()
+
+
 @app.websocket("/live/{raw_token}/ws")
 async def live_note_socket(websocket: WebSocket, raw_token: str) -> None:
     db = SessionLocal()

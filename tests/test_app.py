@@ -144,6 +144,31 @@ def test_live_note_updates_connected_clients():
         assert second.receive_json() == {"type": "update", "text": "now shared"}
 
 
+def test_live_note_http_fallback_syncs_text():
+    get_response = client.get("/create")
+    csrf = _get_csrf(get_response)
+    create_response = client.post(
+        "/create",
+        data={
+            "text": "initial",
+            "share_mode": "live",
+            "expiry_minutes": "10",
+            "consent": "on",
+            "csrf_token": csrf,
+        },
+    )
+    receive_path = re.search(r'value="(http://testserver/live/[^\"]+)"', create_response.text).group(1)
+    receive_path = receive_path.replace("http://testserver", "")
+
+    update_response = client.post(f"{receive_path}/state", json={"text": "saved through HTTP"})
+    assert update_response.status_code == 200
+    assert update_response.json() == {"text": "saved through HTTP"}
+
+    state_response = client.get(f"{receive_path}/state")
+    assert state_response.status_code == 200
+    assert state_response.json() == {"text": "saved through HTTP"}
+
+
 def test_urls_include_configured_root_path():
     original_root_path = app.root_path
     app.root_path = "/one-time"

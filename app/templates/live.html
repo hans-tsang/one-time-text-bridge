@@ -11,6 +11,7 @@
     rows="12"
     maxlength="{{ max_length }}"
     data-websocket-url="{{ url_for('live_note_socket', raw_token=raw_token) }}"
+    data-state-url="{{ url_for('live_note_state', raw_token=raw_token) }}"
   >{{ text }}</textarea>
 </section>
 {% endblock %}
